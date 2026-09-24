@@ -1,0 +1,6 @@
+Codex/Herdr native-state classification matrix (public fm_busy_classify output)
+native=busy    => busy herdr-native
+native=idle    => unknown codex-unverified
+native=unknown => unknown codex-unverified
+native=error   => unknown codex-unverified
+backend=tmux, native=busy => unknown codex-unverified
