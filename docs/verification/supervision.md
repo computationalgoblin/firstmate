@@ -236,6 +236,8 @@ Deterministic entry points:
 tests/fm-busy-state.test.sh
 tests/fm-busy-adapter-wiring.test.sh
 tests/fm-crew-state.test.sh
+tests/fm-watch-triage.test.sh
+tests/fm-branch-supervision.test.sh
 ```
 
 ## Turn-end guard
