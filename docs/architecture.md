@@ -225,7 +225,8 @@ Every classification returns a verdict of busy, idle, unknown, or dead together 
 
 Each converted adapter reports its own turn lifecycle through a machine-readable contract the vendor already exposes, rather than through rendered footer text: Pi and pi-signed through the Firstmate-owned extension's `agent_start` and `agent_settled` confirmed by `ctx.isIdle()`, omp through its extension's `agent_start` and `agent_end` without `willContinue`, OpenCode through its plugin's semantic `session.status`, Claude through owned `UserPromptSubmit`, `Stop`, `StopFailure`, and `SessionEnd` hooks, Muse through its session log, and Cursor through its conversation transcript.
 Kimi behind Pi inherits Pi's lifecycle.
-Codex and standalone Kimi classify unknown behind explicit probes until a semantic source is live-verified for them, and Grok, Rovo, and AGY each keep one clearly isolated rendered-tail busy fallback that can only ever classify their own task.
+Codex and standalone Kimi classify unknown behind explicit probes until a semantic source is live-verified for them, except that Codex on Herdr accepts the backend's exact native `busy` verdict as positive activity evidence while every other native result stays unknown.
+Grok, Rovo, and AGY each keep one clearly isolated rendered-tail busy fallback that can only ever classify their own task.
 The one case where the contract reads rendered text for a converted adapter is the launch-prompt backstop (`fm_busy_launch_prompt_parked` in `bin/fm-busy-lib.sh`): when a record is still the untouched `fm-spawn` seed and the caller supplied a captured pane matching that harness's own recognized interactive launch prompt - a workspace-trust dialog, sign-in screen, or first-run menu - `fm_busy_classify` reports `unknown launch-prompt` instead of `busy fm-spawn`.
 That keeps a launch that never began its brief from holding the busy-age exemption for the whole `FM_BUSY_TURN_MAX_SECS` bound and surfaces it through the ordinary not-provably-working path instead.
 A record any real hook event has advanced is never reclassified this way however its pane looks, no captured tail means the record's own state stands, and the general busy bound is unchanged.
@@ -234,7 +235,7 @@ The per-harness signature table lives in `bin/fm-busy-lib.sh`'s header, and [run
 Missing, malformed, stale, untrusted, or unverified semantic state is unknown, never idle, and unknown is never promoted to busy either.
 Ordinary task-state consumers act only on an exact busy verdict, so an unreadable worker surfaces for a closer look instead of being absorbed as still-working or written off as finished.
 Endpoint death is the only process-level override and yields dead; child processes, CPU, process sleep state, and marker modification times are not state signals.
-`state/<id>.turn-ended` files remain wake notifications, not current state.
+`state/<id>.turn-ended` files remain wake notifications, not current state, and a notification combined with unknown state proves neither exit nor a wedge.
 
 Each record is bound to an incarnation token minted when the task's wiring is armed, so an event from a superseded incarnation is rejected rather than applied, and a record left behind by one classifies unknown.
 Three rendered-text checks deliberately remain outside this contract because they answer delivery questions: submit acknowledgement and the away-mode supervisor-pane busy guard consume the shared delivery-footer matcher owned by `bin/fm-composer-lib.sh`, while `bin/fm-pending-reply-lib.sh` owns the secondmate delivery-confirmation observation.

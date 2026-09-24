@@ -450,7 +450,33 @@ test_codex_unverified_gate() {
   [ "$out" = "unknown codex-unverified" ] || fail "unverified codex must classify unknown, got '$out'"
   [ -z "$(fm_busy_sources_for_harness codex)" ] \
     || fail "codex must trust no semantic source until one is verified"
-  pass "codex classifies unknown until a semantic source passes its verification gate"
+  pass "codex without backend-native positive activity stays unknown until a semantic source passes its verification gate"
+}
+
+test_codex_unverified_accepts_only_herdr_native_busy() {
+  local state out
+  state=$(new_state_dir codex-herdr-native)
+  # shellcheck disable=SC2329 # invoked indirectly through fm_busy_classify
+  fm_backend_busy_state() {
+    [ "$FAKE_NATIVE" != error ] || return 1
+    printf '%s' "$FAKE_NATIVE"
+  }
+
+  FAKE_NATIVE=busy
+  out=$(fm_busy_classify herdr s:p codex t1 "$state")
+  [ "$out" = "busy herdr-native" ] \
+    || fail "unverified codex must accept exact Herdr native busy, got '$out'"
+  for FAKE_NATIVE in idle unknown future error; do
+    out=$(fm_busy_classify herdr s:p codex t1 "$state")
+    [ "$out" = "unknown codex-unverified" ] \
+      || fail "unverified codex with Herdr '$FAKE_NATIVE' must stay unknown, got '$out'"
+  done
+  FAKE_NATIVE=busy
+  out=$(fm_busy_classify tmux w1 codex t1 "$state")
+  [ "$out" = "unknown codex-unverified" ] \
+    || fail "unverified codex on tmux must not borrow Herdr native busy, got '$out'"
+  unset -f fm_backend_busy_state
+  pass "unverified Codex accepts only Herdr's exact native busy evidence; idle, unknown, errors, and other backends stay uncertain"
 }
 
 test_kimi_unverified_gate() {
@@ -619,6 +645,7 @@ test_launch_prompt_never_reclassifies_an_advanced_record
 test_launch_prompt_requires_a_captured_tail
 test_grok_regex_isolated
 test_codex_unverified_gate
+test_codex_unverified_accepts_only_herdr_native_busy
 test_kimi_unverified_gate
 test_cursor_ignores_rendered_and_native_signals
 test_dead_endpoint_overrides

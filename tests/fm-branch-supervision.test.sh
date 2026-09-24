@@ -50,6 +50,10 @@ test_branch_prompt_is_byte_stable_and_above_cache_floor() {
     *) fail "branch prompt lost the inlined recovery playbook" ;;
   esac
   case "$out_a" in
+    *"A \`state/<id>.turn-ended\` marker is only a notification"*"An \`unknown codex-unverified\` current-state result is uncertainty"*"authorize neither relaunch nor a failure declaration"*"separate positive evidence proves endpoint death"*"genuinely wedged after redirection"*) ;;
+    *) fail "branch prompt permits a turn-end notification plus unknown state to imply exit, wedging, relaunch, or failure" ;;
+  esac
+  case "$out_a" in
     *"Report verdict captain for the finished result of work the captain requested, even when that result is healthy."*"A start or still-working update on requested work that brings no new artifact, finding, or decision is verdict routine."*"Keep an unsolicited routine outcome as verdict routine"*"Keep an unchanged fleet review silent"*) ;;
     *) fail "branch prompt lost the requested-result, progress-routine, or routine-silence rules" ;;
   esac

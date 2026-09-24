@@ -53,7 +53,10 @@
 # with the producing source as the second token. Precedence:
 #   1. dead endpoint (fm_busy_classify_live only) -> dead endpoint-gone
 #   2. standalone Kimi before verification       -> unknown kimi-unverified
-#   3. a valid, gen-matching, source-trusted record -> its state and source,
+#   3. Codex before verification on Herdr accepts only native busy as
+#      busy herdr-native; every other native result stays unknown
+#      codex-unverified
+#   4. a valid, gen-matching, source-trusted record -> its state and source,
 #      UNLESS the record is still the untouched seed fm-spawn wrote at arm
 #      time (state=busy source=fm-spawn - no adapter hook has posted since
 #      launch) AND the caller supplied a captured tail that matches that
@@ -66,12 +69,12 @@
 #      this way, however its rendered tail looks, so a genuinely working turn
 #      keeps its ordinary busy verdict and the general BUSY_TURN_MAX_SECS
 #      bound is unchanged.
-#   4. no record at all: herdr's native busy verdict is trusted as busy
+#   5. no record at all: herdr's native busy verdict is trusted as busy
 #      (generation state is sufficient for busy, not for idle), then the
 #      muse session-log and cursor transcript pull sources, then the
 #      Grok/Rovo/AGY temporary regex fallbacks classify a grok, rovo, or agy
 #      task from its rendered tail, then unknown missing
-#   5. malformed, stale, or untrusted records -> unknown, never a fallback
+#   6. malformed, stale, or untrusted records -> unknown, never a fallback
 #
 # fm_busy_launch_prompt_parked (the launch-prompt classifier-only source): a
 # launch whose busy record never advanced past the fm-spawn seed is
@@ -119,8 +122,9 @@
 # fm_busy_codex_hooks_verified): the approved contract prefers Codex's
 # app-server turn lifecycle with capability negotiation, and sanctions its
 # stable lifecycle hooks as the intermediate. Neither is usable on the
-# installed binary, so Codex classifies unknown codex-unverified rather than
-# falling back to idle, and fm-spawn installs no Codex busy wiring.
+# installed binary, so fm-spawn installs no Codex busy wiring. Codex therefore
+# classifies unknown codex-unverified rather than falling back to idle, except
+# that Herdr's exact native busy verdict remains positive activity evidence.
 # docs/verification/supervision.md owns the evidence for both probes.
 #
 # Sourcing: set -u and set -e safe; no subshell-unfriendly globals.
@@ -180,7 +184,8 @@ fm_busy_codex_hooks_verified() {
 
 # fm_busy_codex_semantic_source: 0 when ANY verified Codex semantic source
 # exists. fm-spawn arms and wires Codex only behind this gate, and the
-# classifier reports unknown codex-unverified until it opens.
+# classifier otherwise reports unknown codex-unverified until it opens; Herdr's
+# exact native busy verdict remains independent positive activity evidence.
 fm_busy_codex_semantic_source() {
   fm_busy_codex_appserver_observable || fm_busy_codex_hooks_verified
 }
@@ -996,9 +1001,9 @@ fm_busy_gemini_launch_prompt_tail() {
 # or fail when this harness has none. Consumes the tail on stdin. Scoped to
 # exactly the harnesses fm-spawn.sh arms with the fm-spawn busy source
 # (claude*, opencode*, pi, pi-signed, omp, gemini) since only those can ever
-# read a pinned "busy fm-spawn" record; codex and standalone Kimi already
-# classify unknown before a record is ever consulted, and opencode ships no
-# trust dialog at all.
+# read a pinned "busy fm-spawn" record; standalone Kimi and Codex without an
+# exact Herdr native-busy verdict classify unknown before a record is ever
+# consulted, and opencode ships no trust dialog at all.
 fm_busy_launch_prompt_parked() {  # <harness>
   case "${1:-}" in
     claude*) fm_busy_claude_launch_prompt_tail ;;
@@ -1029,6 +1034,18 @@ fm_busy_classify() {  # <backend> <target> <harness> <id> <state-dir> [tail40]
       ;;
     codex*)
       if ! fm_busy_codex_semantic_source; then
+        # Codex has no verified turn-lifecycle source, but Herdr's exact native
+        # busy verdict is independent positive evidence that its process-backed
+        # agent generation is still working. Native idle is narrower than turn
+        # state, and read errors or future verdicts prove nothing, so every
+        # outcome other than exact busy remains codex-unverified.
+        if [ "$backend" = herdr ] && command -v fm_backend_busy_state >/dev/null 2>&1; then
+          native=$(fm_backend_busy_state "$backend" "$target" 2>/dev/null || true)
+          if [ "$native" = busy ]; then
+            printf 'busy herdr-native'
+            return 0
+          fi
+        fi
         printf 'unknown codex-unverified'
         return 0
       fi

@@ -69,6 +69,10 @@ Only positive socket refusal or absence is a daemon-down finding; escalate that 
 
 ## Live-endpoint escalation
 
+A `state/<id>.turn-ended` marker is only a notification, never proof that the worker exited or even settled its outer turn.
+An `unknown codex-unverified` current-state result is uncertainty, not proof of exit, wedging, or failure; the notification and unknown result together still authorize neither relaunch nor a failure declaration.
+Keep that combination under inspection unless separate positive evidence proves endpoint death, or the ordered progression below proves a live worker genuinely wedged after redirection.
+
 Escalate in order:
 
 1. Peek the pane, and check the task's steering inbox (`state/<id>.inbox/`) for unhandled `*.msg` records - a stale wake naming an unread firstmate instruction means the worker never acknowledged a durable steer, and the record itself shows exactly what was intended.

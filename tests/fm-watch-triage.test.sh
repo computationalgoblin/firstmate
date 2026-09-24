@@ -766,6 +766,27 @@ test_turn_ended_provably_working_absorbed() {
   pass "a bare turn-end whose crew is provably working (busy pane) is absorbed"
 }
 
+test_codex_herdr_turn_ended_native_busy_absorbed() {
+  local dir state fakebin out pid
+  dir=$(make_case codex-herdr-turn-ended-working); state="$dir/state"; fakebin="$dir/fakebin"; out="$dir/watch.out"
+  : > "$state/codexer.turn-ended"
+  printf 'window=lab:worker:pane\nkind=ship\nharness=codex\nbackend=herdr\n' > "$state/codexer.meta"
+  # This is fm-crew-state's exact public result when Codex lacks its own
+  # semantic source but Herdr supplies positive native activity evidence.
+  export FM_FAKE_CREW_STATE='state: working · source: pane · harness busy (herdr-native)'
+  watch_bg "$state" "$fakebin" "$out"
+  pid=$!
+  if ! wait_poll_cycle "$state" "$pid"; then
+    reap "$pid"; fail "watcher surfaced an intermediate Codex notification despite Herdr native busy: $(cat "$out")"
+  fi
+  [ ! -s "$out" ] || fail "absorbed Codex/Herdr turn-end printed a wake reason: $(cat "$out")"
+  [ ! -s "$state/.wake-queue" ] || fail "absorbed Codex/Herdr turn-end enqueued a durable wake record"
+  [ -s "$state/.seen-codexer_turn-ended" ] || fail "absorbed Codex/Herdr turn-end did not advance its suppressor"
+  reap "$pid"
+  unset FM_FAKE_CREW_STATE
+  pass "a Codex turn-end notification is absorbed while Herdr positively confirms native activity"
+}
+
 # --- a no-verb signal whose crew is NOT provably working SURFACES -------------
 # This is the swallowed-finish fix: a crew that finished (or stopped and waits)
 # reports its final turn-end with no captain-relevant status and no running
@@ -6145,6 +6166,7 @@ test_signal_crew_provably_working_classifier
 test_secondmate_status_signal_never_absorbed_classifier
 test_provably_working_signal_absorbed
 test_turn_ended_provably_working_absorbed
+test_codex_herdr_turn_ended_native_busy_absorbed
 test_turn_ended_not_working_surfaced
 test_turn_ended_churning_pane_absorbed
 test_turn_ended_churn_resets_prior_stale_classification
